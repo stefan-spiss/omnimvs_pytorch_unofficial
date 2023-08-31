@@ -4,6 +4,7 @@ import cv2
 import numpy as np
 from ocamcamera import OcamCamera
 from torch.utils.data import Dataset
+import os
 
 
 class OmniStereoDataset(Dataset):
@@ -22,7 +23,7 @@ class OmniStereoDataset(Dataset):
 
         # folder name
         self.cam_list = ['cam1', 'cam2', 'cam3', 'cam4']
-        self.depth_folder = 'depth_train_640'
+        self.depth_folder = 'omnidepth_gt_640'
 
         # load ocam calibration data and generate valid image
         self.ocams = []
@@ -44,7 +45,7 @@ class OmniStereoDataset(Dataset):
             img_path = join(self.root_dir, cam, filename)
             sample[cam] = load_image(img_path, valid=self.valids[i])
         # load inverse depth
-        depth_path = join(self.root_dir, self.depth_folder, filename)
+        depth_path = join(self.root_dir, self.depth_folder, ('0' + os.path.splitext(filename)[0] + '.tiff'))
         sample['idepth'] = load_invdepth(depth_path)
 
         if self.transform:
@@ -58,7 +59,10 @@ def load_invdepth(filename, min_depth=55):
     min_depth in [cm]
     '''
     invd_value = cv2.imread(filename, cv2.IMREAD_ANYDEPTH)
-    invdepth = (invd_value / 100.0) / (min_depth * 655) + np.finfo(np.float32).eps
+    if not (filename.endswith('.tiff') or filename.endswith('.tif')):
+        invdepth = (invd_value / 100.0) / (min_depth * 655) + np.finfo(np.float32).eps
+    else:
+        invdepth = invd_value
     invdepth *= 100  # unit conversion from cm to m
     return invdepth
 
